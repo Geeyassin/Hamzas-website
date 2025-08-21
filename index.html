@@ -49,13 +49,32 @@
 
     <!-- Client: gallery -->
     <section id="screenClientGallery" class="section">
-      <div class="toolbar">
+      <div class="toolbar" style="display:flex;align-items:center;">
+        <input type="date" id="galleryDatePicker" style="margin-right:12px;"/>
         <div class="days" id="daysBar"></div>
       </div>
       <div class="kiosk">
         <div class="sidebar" id="categoryBar"></div>
         <div class="card">
           <div class="grid gallery" id="galleryGrid"></div>
+        </div>
+      </div>
+      <!-- Gallery preview modal (like basket zoom) -->
+      <div id="galleryPreviewModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000a;align-items:center;justify-content:center;z-index:9999;">
+        <div style="position:relative;display:flex;flex-direction:row;align-items:center;gap:32px;">
+          <img id="galleryPreviewImg" style="max-width:60vw;max-height:80vh;border-radius:16px;box-shadow:0 4px 32px #0008;"/>
+          <div style="display:flex;flex-direction:column;align-items:flex-start;">
+            <!-- Size/quantity selection panel -->
+            <div id="galleryPreviewSizesPanel" style="margin-bottom:16px;"></div>
+            <div style="margin-top:0;display:flex;gap:8px;">
+              <button id="galleryPrevBtn" class="btn ghost">⬅</button>
+              <button id="galleryNextBtn" class="btn ghost">➡</button>
+              <button id="galleryAddBtn" class="btn ok">Add to Basket</button>
+              <button id="galleryCloseBtn" class="btn ghost">Close</button>
+            </div>
+            <!-- Feedback message -->
+            <div id="galleryAddFeedback" style="margin-top:12px;font-size:15px;color:#2a7c2a;min-height:24px;"></div>
+          </div>
         </div>
       </div>
       <div class="footer-actions">
@@ -69,6 +88,10 @@
       <div class="row" style="align-items: flex-start;">
         <div class="col" style="flex:2.5;">
           <img id="photoLarge" class="photo-large" alt="photo" style="width:100%;max-width:750px;height:auto;display:block;margin:auto;box-shadow:0 2px 12px #0002;border-radius:12px;cursor:zoom-in"/>
+          <!-- Zoom modal overlay -->
+          <div id="zoomModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000a;align-items:center;justify-content:center;z-index:9999;">
+            <img id="zoomImg" style="max-width:90vw;max-height:90vh;border-radius:16px;box-shadow:0 4px 32px #0008;"/>
+          </div>
           <div class="toolbar">
             <button class="btn ghost" onclick="App.prevPhoto()">⬅</button>
             <button class="btn ghost" onclick="App.nextPhoto()">➡</button>
@@ -97,6 +120,18 @@
         <div class="total">
           <div><span data-i18n="items">Items</span>: <strong id="basketCount">0</strong></div>
           <div><span data-i18n="total">Total</span>: <strong id="basketTotal">0 DT</strong></div>
+        </div>
+      </div>
+      <!-- Basket zoom modal -->
+      <div id="basketZoomModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000a;align-items:center;justify-content:center;z-index:9999;">
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+          <img id="basketZoomImg" style="max-width:90vw;max-height:80vh;border-radius:16px;box-shadow:0 4px 32px #0008;"/>
+          <div style="margin-top:12px;display:flex;gap:8px;">
+            <button id="basketPrevBtn" class="btn ghost">⬅</button>
+            <button id="basketNextBtn" class="btn ghost">➡</button>
+            <button id="basketDeleteBtn" class="btn danger">Delete</button>
+            <button id="basketCloseBtn" class="btn ghost">Close</button>
+          </div>
         </div>
       </div>
       <div class="footer-actions">
@@ -333,19 +368,27 @@ const App = {
       bar.appendChild(b);
     });
 
+    // Set calendar picker to latest day by default
+    const galleryDatePicker = $('#galleryDatePicker');
+    if(galleryDatePicker) {
+      galleryDatePicker.value = State.gallery.day;
+      galleryDatePicker.onchange = function() {
+        State.gallery.day = this.value;
+        App.renderGallery();
+      };
+    }
     // last 7 days
     const days = $('#daysBar'); days.innerHTML='';
-    for(let i=13;i>=0;i--){ // changed from 6 to 13 for 14 days
+    for(let i=6;i>=0;i--){ // 7 days
       const d = new Date(); d.setDate(d.getDate()-i);
       const ds = d.toISOString().slice(0,10);
       const week = d.toLocaleDateString('en-GB',{weekday:'short'});
       const btn=document.createElement('button');
       btn.className='btn ghost'; btn.innerText=`${ds} ${week}`;
-      btn.onclick=()=>{ State.gallery.day=ds; App.renderGallery(); };
+      btn.onclick=()=>{ State.gallery.day=ds; App.renderGallery(); if(galleryDatePicker) galleryDatePicker.value = ds; };
       days.appendChild(btn);
       if(i===0) State.gallery.day = ds;
     }
-
     // categories
     const catBar = $('#categoryBar'); catBar.innerHTML='';
     CATEGORIES.forEach(c=>{
@@ -410,15 +453,14 @@ const App = {
     const list = State.photos.filter(p=>{
       return (!State.gallery.day || p.date===State.gallery.day) && (!State.gallery.cat || p.category===State.gallery.cat);
     });
-    list.slice(0,200).forEach((p)=>{
+    list.slice(0,200).forEach((p,idx)=>{
       const d = document.createElement('div'); d.className='thumb';
       const img = document.createElement('img');
       img.src = p.thumb || URL.createObjectURL(p.blob);
       img.alt = p.filename||('photo_'+p.id);
-      img.onclick=()=>{ State.currentPhotoIndex = State.photos.findIndex(x=>x.id===p.id); App.openPhoto(p); };
-      const pick = document.createElement('button'); pick.className='pick'; pick.textContent='➕';
-      pick.onclick=()=>{ State.currentPhotoIndex = State.photos.findIndex(x=>x.id===p.id); App.openPhoto(p); };
-      d.appendChild(img); d.appendChild(pick);
+      img.style.cursor = 'zoom-in';
+      img.onclick=()=>{ App.openGalleryPreview(idx); };
+      d.appendChild(img);
       g.appendChild(d);
     });
   },
@@ -501,17 +543,36 @@ const App = {
       const sizes = Object.entries(it.sizes).map(([k,v])=>`${k} × ${v}`).join(', ');
       const tr = document.createElement('tr');
       const imgURL = p ? (p.thumb || URL.createObjectURL(p.blob)) : '';
-      tr.innerHTML = `<td><img src="${imgURL}" style="width:70px;height:50px;object-fit:cover;border-radius:6px"/></td>
-        <td>${sizes||'-'}</td>
-        <td>${it.usb?'YES':'NO'}</td>
-        <td>${it.total} DT</td>
-        <td><button class="btn danger">Delete</button></td>`;
-      tr.querySelector('button').onclick=()=>{ State.basket.splice(idx,1); App.renderBasket(); };
-      t.appendChild(tr);
-      total += it.total;
-    });
-    $('#basketTotal').textContent = `${total} DT`;
-    $('#basketCount').textContent = String(State.basket.length);
+      tr.innerHTML = `<td>
+      <img src="${imgURL}" style="width:70px;height:50px;object-fit:cover;border-radius:6px;cursor:zoom-in" data-basket-idx="${idx}"/>
+      </td>
+      <td>${sizes||'-'}</td>
+      <td>${it.usb?'YES':'NO'}</td>
+      <td>${it.total} DT</td>
+      <td><button class="btn danger">Delete</button></td>`;
+    // Delete button
+    tr.querySelector('button').onclick=()=>{ State.basket.splice(idx,1); App.renderBasket(); };
+    // Zoom image click
+    tr.querySelector('img').onclick=function(){
+      App.openBasketZoom(idx);
+    };
+    t.appendChild(tr);
+    total += it.total;
+  });
+  $('#basketTotal').textContent = `${total} DT`;
+  $('#basketCount').textContent = String(State.basket.length);
+},
+
+  openBasketZoom: function(idx){
+    State.basketZoomIndex = idx;
+    const it = State.basket[idx];
+    const p = State.photos.find(x=>x.id===it.photoId);
+    const imgURL = p ? URL.createObjectURL(p.blob) : '';
+    $('#basketZoomImg').src = imgURL;
+    $('#basketZoomModal').style.display = 'flex';
+    // Enable/disable prev/next
+    $('#basketPrevBtn').disabled = (idx === 0);
+    $('#basketNextBtn').disabled = (idx === State.basket.length-1);
   },
 
   submitOrder(){
@@ -719,5 +780,234 @@ window.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 });
+
+// Basket zoom logic
+App.openBasketZoom = function(idx){
+  State.basketZoomIndex = idx;
+  const it = State.basket[idx];
+  const p = State.photos.find(x=>x.id===it.photoId);
+  const imgURL = p ? URL.createObjectURL(p.blob) : '';
+  $('#basketZoomImg').src = imgURL;
+  $('#basketZoomModal').style.display = 'flex';
+  // Enable/disable prev/next
+  $('#basketPrevBtn').disabled = (idx === 0);
+  $('#basketNextBtn').disabled = (idx === State.basket.length-1);
+};
+
+// Ensure basket zoom buttons work after DOM is loaded
+window.addEventListener('DOMContentLoaded', ()=>{
+  // ...existing code for photoLarge zoom...
+  // Basket zoom modal buttons
+  const basketZoomModal = document.getElementById('basketZoomModal');
+  const basketPrevBtn = document.getElementById('basketPrevBtn');
+  const basketNextBtn = document.getElementById('basketNextBtn');
+  const basketDeleteBtn = document.getElementById('basketDeleteBtn');
+  const basketCloseBtn = document.getElementById('basketCloseBtn');
+  const basketZoomImg = document.getElementById('basketZoomImg');
+
+  function closeBasketZoom(){
+    basketZoomModal.style.display = 'none';
+    basketZoomImg.src = '';
+  }
+
+  if(basketPrevBtn && basketNextBtn && basketDeleteBtn && basketCloseBtn && basketZoomModal){
+    basketPrevBtn.onclick = function(e){
+      e.stopPropagation();
+      if(State.basketZoomIndex > 0){
+        App.openBasketZoom(State.basketZoomIndex-1);
+      }
+    };
+    basketNextBtn.onclick = function(e){
+      e.stopPropagation();
+      if(State.basketZoomIndex < State.basket.length-1){
+        App.openBasketZoom(State.basketZoomIndex+1);
+      }
+    };
+    basketDeleteBtn.onclick = function(e){
+      e.stopPropagation();
+      if(State.basket.length && State.basketZoomIndex >= 0){
+        State.basket.splice(State.basketZoomIndex,1);
+        App.renderBasket();
+        // If basket still has items, show next or previous image
+        if(State.basket.length > 0){
+          let nextIdx = State.basketZoomIndex;
+          if(nextIdx >= State.basket.length) nextIdx = State.basket.length - 1;
+          App.openBasketZoom(nextIdx);
+        } else {
+          closeBasketZoom();
+        }
+      }
+    };
+    basketCloseBtn.onclick = function(e){
+      e.stopPropagation();
+      closeBasketZoom();
+    };
+    // ESC key
+    document.addEventListener('keydown', function(e){
+      if(basketZoomModal.style.display === 'flex' && (e.key === 'Escape' || e.key === 'Esc')){
+        closeBasketZoom();
+      }
+    });
+    // Click outside image closes modal
+    basketZoomModal.onclick = function(e){
+      if(e.target === basketZoomModal) closeBasketZoom();
+    };
+  }
+});
+
+// Render sizes/quantity panel for gallery preview modal
+function renderGalleryPreviewSizesPanel() {
+  const sizes = ['15x21','20x30','30x40','30x60'];
+  const panel = document.getElementById('galleryPreviewSizesPanel');
+  panel.innerHTML = '';
+  // Use State.galleryPreviewSizes for current selection, initialize if needed
+  if (!State.galleryPreviewSizes) {
+    State.galleryPreviewSizes = {};
+    sizes.forEach(s => State.galleryPreviewSizes[s] = 0);
+    State.galleryPreviewUSB = false;
+  }
+  sizes.forEach(s=>{
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.alignItems = 'center';
+    row.style.fontSize = '13px';
+    row.style.marginBottom = '6px';
+    const label = document.createElement('div');
+    label.innerHTML = `<span class="price-chip" style="font-size:12px">${s} — <span>${State.prices[s]}</span> DT</span>`;
+    const qty = document.createElement('div');
+    qty.className = 'qty';
+    qty.style.fontSize = '12px';
+    qty.style.display = 'flex';
+    qty.style.alignItems = 'center';
+    qty.style.gap = '6px';
+    const minus = document.createElement('button');
+    minus.textContent = '−';
+    minus.style.fontSize = '13px';
+    minus.style.padding = '2px 8px';
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.value = State.galleryPreviewSizes[s] || 0;
+    input.min = 0;
+    input.style.width = '48px';
+    input.style.fontSize = '12px';
+    input.style.textAlign = 'center';
+    const plus = document.createElement('button');
+    plus.textContent = '+';
+    plus.style.fontSize = '13px';
+    plus.style.padding = '2px 8px';
+    minus.onclick = ()=>{ input.value = Math.max(0, parseInt(input.value||0)-1); State.galleryPreviewSizes[s] = parseInt(input.value); };
+    plus.onclick = ()=>{ input.value = parseInt(input.value||0)+1; State.galleryPreviewSizes[s] = parseInt(input.value); };
+    input.oninput = ()=>{ State.galleryPreviewSizes[s] = parseInt(input.value||0); };
+    qty.append(minus, input, plus);
+    row.append(label, qty);
+    panel.appendChild(row);
+  });
+  // USB option
+  const usbDiv = document.createElement('div');
+  usbDiv.style.marginTop = '8px';
+  usbDiv.innerHTML = `<label style="font-size:13px;"><input type="checkbox" id="galleryPreviewUSB"> Digital copy (USB)</label>`;
+  panel.appendChild(usbDiv);
+  const usbToggle = usbDiv.querySelector('input');
+  usbToggle.checked = !!State.galleryPreviewUSB;
+  usbToggle.onchange = ()=>{ State.galleryPreviewUSB = usbToggle.checked; };
+}
+
+// Gallery preview modal logic
+App.openGalleryPreview = function(idx){
+  State.galleryPreviewIndex = idx;
+  const list = State.photos.filter(p=>{
+    return (!State.gallery.day || p.date===State.gallery.day) && (!State.gallery.cat || p.category===State.gallery.cat);
+  });
+  const p = list[idx];
+  const imgURL = p ? URL.createObjectURL(p.blob) : '';
+  $('#galleryPreviewImg').src = imgURL;
+  $('#galleryPreviewModal').style.display = 'flex';
+  // Enable/disable prev/next
+  $('#galleryPrevBtn').disabled = (idx === 0);
+  $('#galleryNextBtn').disabled = (idx === list.length-1);
+  // Store current preview list for navigation
+  State.galleryPreviewList = list;
+  // Reset size/qty selection for each photo
+  State.galleryPreviewSizes = {};
+  ['15x21','20x30','30x40','30x60'].forEach(s => State.galleryPreviewSizes[s] = 0);
+  State.galleryPreviewUSB = false;
+  renderGalleryPreviewSizesPanel();
+};
+
+function closeGalleryPreview(){
+  $('#galleryPreviewModal').style.display = 'none';
+  $('#galleryPreviewImg').src = '';
+  State.galleryPreviewList = null;
+  State.galleryPreviewSizes = null;
+  State.galleryPreviewUSB = null;
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  // ...existing code for photoLarge and basket zoom...
+  // Gallery preview modal buttons
+  const galleryPreviewModal = document.getElementById('galleryPreviewModal');
+  const galleryPrevBtn = document.getElementById('galleryPrevBtn');
+  const galleryNextBtn = document.getElementById('galleryNextBtn');
+  const galleryAddBtn = document.getElementById('galleryAddBtn');
+  const galleryCloseBtn = document.getElementById('galleryCloseBtn');
+  const galleryPreviewImg = document.getElementById('galleryPreviewImg');
+  const galleryAddFeedback = document.getElementById('galleryAddFeedback');
+
+  if(galleryPrevBtn && galleryNextBtn && galleryAddBtn && galleryCloseBtn && galleryPreviewModal){
+    galleryPrevBtn.onclick = function(e){
+      e.stopPropagation();
+      if(State.galleryPreviewIndex > 0){
+        App.openGalleryPreview(State.galleryPreviewIndex-1);
+      }
+    };
+    galleryNextBtn.onclick = function(e){
+      e.stopPropagation();
+      if(State.galleryPreviewList && State.galleryPreviewIndex < State.galleryPreviewList.length-1){
+        App.openGalleryPreview(State.galleryPreviewIndex+1);
+      }
+    };
+    galleryAddBtn.onclick = function(e){
+      e.stopPropagation();
+      // Add current photo to basket with selected sizes/qty and USB
+      const p = State.galleryPreviewList[State.galleryPreviewIndex];
+      if(p){
+        const sizes = {};
+        let any = false;
+        ['15x21','20x30','30x40','30x60'].forEach(s=>{
+          const qty = parseInt(State.galleryPreviewSizes[s]||0);
+          if(qty>0){ sizes[s]=qty; any=true; }
+        });
+        if(!any && !State.galleryPreviewUSB){ 
+          galleryAddFeedback.textContent = 'Select at least one size or USB.'; 
+          return; 
+        }
+        let total = 0;
+        Object.entries(sizes).forEach(([s,qty])=>{
+          total += (State.prices[s]||0)*qty;
+        });
+        if(State.galleryPreviewUSB) total += (State.prices.usb||0);
+        State.basket.push({photoId:p.id, sizes, usb:!!State.galleryPreviewUSB, total});
+        App.renderBasket();
+        // Show feedback
+        galleryAddFeedback.textContent = 'Added to basket!';
+        setTimeout(()=>{ galleryAddFeedback.textContent = ''; }, 1600);
+      }
+      // Stay in preview modal
+    };
+    galleryCloseBtn.onclick = function(e){
+      e.stopPropagation();
+      closeGalleryPreview();
+    };
+    // ESC key
+    document.addEventListener('keydown', function(e){
+      if(galleryPreviewModal.style.display === 'flex' && (e.key === 'Escape' || e.key === 'Esc')){
+        closeGalleryPreview();
+      }
+    });
+    // Click outside image closes modal
+    galleryPreviewModal.onclick = function(e){
+      if(e.target === galleryPreviewModal) closeGalleryPreview();
+    };
+  }
+});
 </script>
-<!-- ...existing code... -->
