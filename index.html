@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Aziz Photography — Offline Kiosk</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">  <img class="logo" src="aziz photo.jpg" alt="logo"></div>
+        <div> <a class="name" href="./index.html">Aziz Photography</a></div>
+      </div>
+      <div>
+        <span class="lang-pill" id="langIndicator">EN</span>
+      </div>
+    </header>
+
+    <!-- Role selection -->
+    <section id="screenRole" class="section active">
+      <h1 class="h1">Welcome</h1>
+      <p class="small">Choose how to use the app.</p>
+      <div class="role-grid">
+        <button class="role" onclick="App.go('screenClientLanguage')">
+          <div class="emoji">🧑‍🤝‍🧑</div>
+          <div class="h2">Client</div>
+          <div class="small">Select photos and order</div>
+        </button>
+        <button class="role" onclick="App.go('screenAdminLogin')">
+          <div class="emoji">🛠️</div>
+          <div class="h2">Admin</div>
+          <div class="small">Upload photos & manage orders</div>
+        </button>
+      </div>
+    </section>
+
+    <!-- Client: language + slideshow -->
+    <section id="screenClientLanguage" class="section">
+      <h1 class="h1" data-i18n="chooseLanguage">Choose your language</h1>
+      <div class="toolbar" id="langBar"></div>
+      <div class="slideshow" id="slideshow"><img id="slideImg" alt="slideshow"></div>
+      <div class="footer-actions">
+        <button class="btn ghost" onclick="App.go('screenRole')" data-i18n="back">Back</button>
+        <button class="btn primary" onclick="App.go('screenClientGallery')" data-i18n="continue">Continue</button>
+      </div>
+    </section>
+
+    <!-- Client: gallery -->
+    <section id="screenClientGallery" class="section">
+      <div class="toolbar">
+        <div class="days" id="daysBar"></div>
+      </div>
+      <div class="kiosk">
+        <div class="sidebar" id="categoryBar"></div>
+        <div class="card">
+          <div class="grid gallery" id="galleryGrid"></div>
+        </div>
+      </div>
+      <div class="footer-actions">
+        <button class="btn ghost" onclick="App.go('screenClientLanguage')" data-i18n="back">Back</button>
+        <button class="btn primary" onclick="App.go('screenClientBasket')" data-i18n="openBasket">Open Basket</button>
+      </div>
+    </section>
+
+    <!-- Client: photo detail -->
+    <section id="screenClientPhoto" class="section">
+      <div class="row" style="align-items: flex-start;">
+        <div class="col" style="flex:2.5;">
+          <img id="photoLarge" class="photo-large" alt="photo" style="width:100%;max-width:750px;height:auto;display:block;margin:auto;box-shadow:0 2px 12px #0002;border-radius:12px;cursor:zoom-in"/>
+          <div class="toolbar">
+            <button class="btn ghost" onclick="App.prevPhoto()">⬅</button>
+            <button class="btn ghost" onclick="App.nextPhoto()">➡</button>
+            <button class="btn ghost" onclick="App.go('screenClientGallery')" data-i18n="back">Back</button>
+          </div>
+        </div>
+        <div class="col panel-light" style="flex:0.75;max-width:252px; font-size:13px;">
+          <h2 class="h2" data-i18n="chooseFormat" style="font-size:16px;">Choose format</h2>
+          <div id="sizesPanel"></div>
+          <div style="margin-top:8px">
+            <label style="font-size:13px;"><input type="checkbox" id="usbToggle"> <span data-i18n="digitalUSB">Digital copy (USB)</span></label>
+          </div>
+          <div class="footer-actions" style="font-size:13px;">
+            <div><span data-i18n="itemTotal">Item total</span>: <span id="itemTotal" class="price-chip">0 DT</span></div>
+            <button class="btn ok" onclick="App.addToBasket()" data-i18n="addToBasket" style="font-size:13px;">Add to Basket</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Client: basket -->
+    <section id="screenClientBasket" class="section">
+      <h1 class="h1" data-i18n="yourBasket">Your Basket</h1>
+      <div class="card">
+        <table class="table" id="basketTable"></table>
+        <div class="total">
+          <div><span data-i18n="items">Items</span>: <strong id="basketCount">0</strong></div>
+          <div><span data-i18n="total">Total</span>: <strong id="basketTotal">0 DT</strong></div>
+        </div>
+      </div>
+      <div class="footer-actions">
+        <button class="btn ghost" onclick="App.go('screenClientGallery')" data-i18n="back">Back</button>
+        <button class="btn ok" onclick="App.go('screenRoom')" data-i18n="confirmDemand">Confirm the Demand</button>
+      </div>
+    </section>
+
+    <!-- Client: room number -->
+    <section id="screenRoom" class="section">
+      <div class="card">
+        <h2 class="h2" data-i18n="enterRoom">Insert your room number to confirm</h2>
+        <div class="row">
+          <div class="col">
+            <input id="roomInput" placeholder="e.g. 302" style="width:100%;padding:14px;font-size:18px"/>
+            <div class="vkbd" id="vkbd"></div>
+          </div>
+          <div class="col panel-light">
+            <div class="note" data-i18n="privacyNote">
+              Your order is sent to the admin for printing. No personal data is stored besides room number.
+            </div>
+            <div class="footer-actions">
+              <button class="btn ghost" onclick="App.go('screenClientBasket')" data-i18n="cancel">Cancel</button>
+              <button class="btn ok" onclick="App.submitOrder()" data-i18n="ok">OK</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Admin: login -->
+    <section id="screenAdminLogin" class="section">
+      <div class="card" style="max-width:520px;margin-inline:auto">
+        <h1 class="h1">Admin Login</h1>
+        <div class="form">
+          <input id="adminUser" placeholder="Username" value="admin"/>
+          <input id="adminPass" placeholder="Password" type="password"/>
+          <div class="small">Default password: <kbd>aziz2025</kbd> (change in Settings)</div>
+          <div class="footer-actions">
+            <button class="btn ghost" onclick="App.go('screenRole')">Back</button>
+            <button class="btn ok" onclick="App.adminLogin()">Login</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Admin: dashboard -->
+    <section id="screenAdminDash" class="section">
+      <div class="row">
+        <div class="col">
+          <div class="card">
+            <div class="toolbar">
+              <button class="btn primary" onclick="Admin.showTab('tabDownload')">⬇ Download</button>
+              <button class="btn primary" onclick="Admin.showTab('tabOrders')">🧾 Orders</button>
+              <button class="btn primary" onclick="Admin.showTab('tabExport')">📤 Export</button>
+              <button class="btn primary" onclick="Admin.showTab('tabSettings')">⚙️ Settings</button>
+              <div style="flex:1"></div>
+              <button class="btn ghost" onclick="App.logout()">Logout</button>
+            </div>
+
+            <!-- Download (import photos) -->
+            <div id="tabDownload" class="panel-light">
+              <h2 class="h2">Download (Import Photos)</h2>
+              <div class="form">
+                <input type="file" id="photoInput" accept="image/*" multiple />
+                <div class="settings-grid">
+                  <div>
+                    <label>Date</label>
+                    <input type="date" id="photoDate"/>
+                  </div>
+                  <div>
+                    <label>Category</label>
+                    <select id="photoCat">
+                      <option>Pool</option>
+                      <option>Beach</option>
+                      <option>Garden</option>
+                      <option>Event</option>
+                    </select>
+                  </div>
+                </div>
+                <button class="btn ok" onclick="Admin.importPhotos()">Import to Client Area</button>
+                <div id="importStatus" class="small"></div>
+              </div>
+              <!-- Photo list for deletion -->
+              <div id="adminPhotoList" style="margin-top:16px"></div>
+            </div>
+
+            <!-- Orders -->
+            <div id="tabOrders" class="panel-light" style="display:none">
+              <h2 class="h2">Orders</h2>
+              <div id="ordersList"></div>
+            </div>
+
+            <!-- Export -->
+            <div id="tabExport" class="panel-light" style="display:none">
+              <h2 class="h2">Export</h2>
+              <p>Export all orders as CSV file.</p>
+              <button class="btn ok" onclick="Admin.exportCSV()">Download CSV</button>
+              <div id="exportStatus" class="small"></div>
+            </div>
+
+            <!-- Settings -->
+            <div id="tabSettings" class="panel-light" style="display:none">
+              <h2 class="h2">Settings</h2>
+              <div class="settings-grid">
+                <div>
+                  <label>Price 15×21 (DT)</label>
+                  <input id="p_15x21" type="number" value="20"/>
+                </div>
+                <div>
+                  <label>Price 20×30 (DT)</label>
+                  <input id="p_20x30" type="number" value="60"/>
+                </div>
+                <div>
+                  <label>Price 30×40 (DT)</label>
+                  <input id="p_30x40" type="number" value="100"/>
+                </div>
+                <div>
+                  <label>Price 30×60 (DT)</label>
+                  <input id="p_30x60" type="number" value="150"/>
+                </div>
+                <div>
+                  <label>Digital (USB) (DT)</label>
+                  <input id="p_usb" type="number" value="50"/>
+                </div>
+                <div>
+                  <label>Admin Password</label>
+                  <input id="admin_password" type="text" value="aziz2025"/>
+                </div>
+              </div>
+              <div class="footer-actions">
+                <button class="btn ok" onclick="Admin.saveSettings()">Save</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
+
+
+<!-- java script -->
+
+<script>
+
+/* Offline SPA for Aziz Photography */
+
+const $ = (sel)=>document.querySelector(sel);
+const $$ = (sel)=>Array.from(document.querySelectorAll(sel));
+
+/* ---------- IndexedDB wrapper ---------- */
+const DB = (function(){
+  const DB_NAME='azizPhotoApp', DB_VER=1;
+  let db;
+  function open(){
+    return new Promise((resolve,reject)=>{
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = (e)=>{
+        db = e.target.result;
+        if(!db.objectStoreNames.contains('photos')){
+          const ps = db.createObjectStore('photos', {keyPath:'id', autoIncrement:true});
+          ps.createIndex('by_date','date');
+          ps.createIndex('by_cat','category');
+        }
+        if(!db.objectStoreNames.contains('orders')){
+          db.createObjectStore('orders',{keyPath:'id', autoIncrement:true});
+        }
+        if(!db.objectStoreNames.contains('settings')){
+          db.createObjectStore('settings',{keyPath:'key'});
+        }
+      };
+      req.onsuccess = ()=>{ db = req.result; resolve(); };
+      req.onerror = ()=>reject(req.error);
+    });
+  }
+  function tx(store, mode='readonly'){ return db.transaction(store, mode).objectStore(store); }
+  async function put(store, val){ return new Promise((res,rej)=>{ const r=tx(store,'readwrite').put(val); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+  async function get(store, key){ return new Promise((res,rej)=>{ const r=tx(store).get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+  async function getAll(store){ return new Promise((res,rej)=>{ const r=tx(store).getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+  async function del(store, key){ return new Promise((res,rej)=>{ const r=tx(store,'readwrite').delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+  return {open, put, get, getAll, del};
+})();
+
+/* ---------- Translations (EN/FR/CZ/NL/DE/PL/AR) ---------- */
+const I18N = {
+  en:{ chooseLanguage:"Choose your language", back:"Back", continue:"Continue", openBasket:"Open Basket", chooseFormat:"Choose format", digitalUSB:"Digital copy (USB)", addToBasket:"Add to Basket", itemTotal:"Item total", yourBasket:"Your Basket", items:"Items", total:"Total", confirmDemand:"Confirm the Demand", enterRoom:"Insert your room number to confirm", privacyNote:"Your order is sent to the admin for printing. No personal data is stored besides room number.", cancel:"Cancel", ok:"OK" },
+  fr:{ chooseLanguage:"Choisissez votre langue", back:"Retour", continue:"Continuer", openBasket:"Ouvrir le panier", chooseFormat:"Choisir le format", digitalUSB:"Copie numérique (USB)", addToBasket:"Ajouter au panier", itemTotal:"Total de l'article", yourBasket:"Votre panier", items:"Articles", total:"Total", confirmDemand:"Confirmer la demande", enterRoom:"Entrez votre numéro de chambre pour confirmer", privacyNote:"Votre commande est envoyée à l'admin pour impression. Seul le numéro de chambre est enregistré.", cancel:"Annuler", ok:"OK" },
+  cs:{ chooseLanguage:"Zvolte jazyk", back:"Zpět", continue:"Pokračovat", openBasket:"Otevřít košík", chooseFormat:"Vyberte formát", digitalUSB:"Digitální kopie (USB)", addToBasket:"Přidat do košíku", itemTotal:"Cena položky", yourBasket:"Váš košík", items:"Položky", total:"Celkem", confirmDemand:"Potvrdit objednávku", enterRoom:"Zadejte číslo pokoje pro potvrzení", privacyNote:"Objednávka je odeslána adminovi k tisku. Ukládá se pouze číslo pokoje.", cancel:"Zrušit", ok:"OK" },
+  nl:{ chooseLanguage:"Kies je taal", back:"Terug", continue:"Doorgaan", openBasket:"Open mandje", chooseFormat:"Kies formaat", digitalUSB:"Digitale kopie (USB)", addToBasket:"Toevoegen aan mandje", itemTotal:"Totaal per item", yourBasket:"Je mandje", items:"Items", total:"Totaal", confirmDemand:"Bestelling bevestigen", enterRoom:"Voer je kamernummer in om te bevestigen", privacyNote:"Je bestelling wordt naar de admin gestuurd. Alleen kamernummer wordt opgeslagen.", cancel:"Annuleren", ok:"OK" },
+  de:{ chooseLanguage:"Sprache wählen", back:"Zurück", continue:"Weiter", openBasket:"Warenkorb öffnen", chooseFormat:"Format wählen", digitalUSB:"Digitale Kopie (USB)", addToBasket:"In den Warenkorb", itemTotal:"Artikelgesamt", yourBasket:"Dein Warenkorb", items:"Artikel", total:"Gesamt", confirmDemand:"Bestellung bestätigen", enterRoom:"Zimmernummer zur Bestätigung eingeben", privacyNote:"Ihre Bestellung wird an den Admin gesendet. Es wird nur die Zimmernummer gespeichert.", cancel:"Abbrechen", ok:"OK" },
+  pl:{ chooseLanguage:"Wybierz język", back:"Wstecz", continue:"Dalej", openBasket:"Otwórz koszyk", chooseFormat:"Wybierz format", digitalUSB:"Kopia cyfrowa (USB)", addToBasket:"Dodaj do koszyka", itemTotal:"Suma pozycji", yourBasket:"Twój koszyk", items:"Pozycje", total:"Razem", confirmDemand:"Potwierdź zamówienie", enterRoom:"Wpisz numer pokoju, aby potwierdzić", privacyNote:"Zamówienie jest wysyłane do admina. Przechowywany jest tylko numer pokoju.", cancel:"Anuluj", ok:"OK" },
+  ar:{ chooseLanguage:"اختر لغتك", back:"رجوع", continue:"متابعة", openBasket:"فتح السلة", chooseFormat:"اختر المقاس", digitalUSB:"نسخة رقمية (USB)", addToBasket:"أضف إلى السلة", itemTotal:"مجموع العنصر", yourBasket:"سلتك", items:"العناصر", total:"الإجمالي", confirmDemand:"تأكيد الطلب", enterRoom:"أدخل رقم غرفتك للتأكيد", privacyNote:"يتم إرسال طلبك إلى المسؤول للطباعة. لا يتم حفظ أي بيانات شخصية غير رقم الغرفة.", cancel:"إلغاء", ok:"موافق" }
+};
+
+/* ---------- App state ---------- */
+const CATEGORIES = ["Pool","Beach","Garden","Event"];
+let State = {
+  lang:'en',
+  prices:{'15x21':20,'20x30':60,'30x40':100,'30x60':150, usb:50},
+  adminPass:'aziz2025',
+  basket:[], // items: {photoId, sizes:{'15x21':n,...}, usb:boolean, total:number}
+  gallery:{day:null, cat:null},
+  photos:[], // loaded from DB
+  orders:[],
+  currentPhotoIndex:0
+};
+
+/* ---------- App logic ---------- */
+const App = {
+  async init(){
+    await DB.open();
+    await Admin.loadSettings();
+
+    // language buttons (with Tunisian flag for Arabic)
+    const langs=[
+      {code:'en', flag:'🇬🇧', label:'English'},
+      {code:'fr', flag:'🇫🇷', label:'Français'},
+      {code:'cs', flag:'🇨🇿', label:'Česky'},
+      {code:'nl', flag:'🇳🇱', label:'Nederlands'},
+      {code:'de', flag:'🇩🇪', label:'Deutsch'},
+      {code:'pl', flag:'🇵🇱', label:'Polski'},
+      {code:'ar', flag:'🇹🇳', label:'العربية'}
+    ];
+    const bar = $('#langBar'); bar.innerHTML='';
+    langs.forEach(l=>{
+      const b=document.createElement('button');
+      b.className='btn'; b.innerText=`${l.flag} ${l.label}`;
+      b.onclick=()=>App.setLanguage(l.code);
+      bar.appendChild(b);
+    });
+
+    // last 7 days
+    const days = $('#daysBar'); days.innerHTML='';
+    for(let i=13;i>=0;i--){ // changed from 6 to 13 for 14 days
+      const d = new Date(); d.setDate(d.getDate()-i);
+      const ds = d.toISOString().slice(0,10);
+      const week = d.toLocaleDateString('en-GB',{weekday:'short'});
+      const btn=document.createElement('button');
+      btn.className='btn ghost'; btn.innerText=`${ds} ${week}`;
+      btn.onclick=()=>{ State.gallery.day=ds; App.renderGallery(); };
+      days.appendChild(btn);
+      if(i===0) State.gallery.day = ds;
+    }
+
+    // categories
+    const catBar = $('#categoryBar'); catBar.innerHTML='';
+    CATEGORIES.forEach(c=>{
+      const b=document.createElement('button');
+      b.className='btn ghost'; b.innerText=c;
+      b.onclick=()=>{ State.gallery.cat=c; App.renderGallery(); };
+      catBar.appendChild(b);
+    });
+    State.gallery.cat=CATEGORIES[0];
+
+    await App.reloadPhotos();
+    App.startSlideshow();
+    App.setLanguage(State.lang);
+    App.renderSizesPanel();
+    App.renderBasket();
+    // Render admin photo list if admin tab is open
+    Admin.renderPhotoList();
+  },
+
+  setLanguage(code){
+    State.lang = code;
+    $('#langIndicator').innerText = code.toUpperCase();
+    document.body.classList.toggle('rtl', code==='ar');
+    $$('[data-i18n]').forEach(el=>{
+      const key=el.getAttribute('data-i18n');
+      el.textContent = I18N[code][key] || I18N['en'][key] || key;
+    });
+  },
+
+  async reloadPhotos(){
+    State.photos = await DB.getAll('photos');
+    App.renderGallery();
+  },
+
+  startSlideshow(){
+    const slide = $('#slideImg');
+    let idx=0;
+    const pick = [...State.photos].slice(-50); // last 50
+    if(pick.length===0){
+      slide.removeAttribute('src');
+      slide.alt='Upload photos in Admin > Download to see slideshow';
+      return;
+    }
+    function show(){
+      const p = pick[idx % pick.length];
+      // Use original photo blob for better quality
+      const url = URL.createObjectURL(p.blob);
+      slide.src = url;
+      idx++;
+    }
+    show();
+    setInterval(show, 2000);
+  },
+
+  go(id){
+    $$('.section').forEach(s=>s.classList.remove('active'));
+    $('#'+id).classList.add('active');
+  },
+
+  renderGallery(){
+    const g = $('#galleryGrid'); g.innerHTML='';
+    const list = State.photos.filter(p=>{
+      return (!State.gallery.day || p.date===State.gallery.day) && (!State.gallery.cat || p.category===State.gallery.cat);
+    });
+    list.slice(0,200).forEach((p)=>{
+      const d = document.createElement('div'); d.className='thumb';
+      const img = document.createElement('img');
+      img.src = p.thumb || URL.createObjectURL(p.blob);
+      img.alt = p.filename||('photo_'+p.id);
+      img.onclick=()=>{ State.currentPhotoIndex = State.photos.findIndex(x=>x.id===p.id); App.openPhoto(p); };
+      const pick = document.createElement('button'); pick.className='pick'; pick.textContent='➕';
+      pick.onclick=()=>{ State.currentPhotoIndex = State.photos.findIndex(x=>x.id===p.id); App.openPhoto(p); };
+      d.appendChild(img); d.appendChild(pick);
+      g.appendChild(d);
+    });
+  },
+
+  openPhoto(p){
+    $('#photoLarge').src = URL.createObjectURL(p.blob);
+    $('#usbToggle').checked = false;
+    // reset qty inputs
+    $$('.qty input').forEach(i=>i.value=0);
+    App.updateItemTotal();
+    App.go('screenClientPhoto');
+  },
+
+  prevPhoto(){ State.currentPhotoIndex=Math.max(0, State.currentPhotoIndex-1); App.openPhoto(State.photos[State.currentPhotoIndex]); },
+  nextPhoto(){ State.currentPhotoIndex=Math.min(State.photos.length-1, State.currentPhotoIndex+1); App.openPhoto(State.photos[State.currentPhotoIndex]); },
+
+  renderSizesPanel(){
+    const sizes = ['15x21','20x30','30x40','30x60'];
+    const panel = $('#sizesPanel'); panel.innerHTML='';
+    sizes.forEach(s=>{
+      const row = document.createElement('div'); row.className='row'; row.style.alignItems='center';
+      row.style.fontSize = '13px'; // Decrease font size for options
+      row.style.marginBottom = '6px';
+      const label = document.createElement('div'); label.innerHTML = `<span class="price-chip" style="font-size:12px">${s} — <span data-price="${s}">${State.prices[s]}</span> DT</span>`;
+      const qty = document.createElement('div'); qty.className='qty';
+      qty.style.fontSize = '12px';
+      qty.style.display = 'flex';
+      qty.style.alignItems = 'center';
+      qty.style.gap = '6px'; // Add gap between buttons and input
+      const minus = document.createElement('button'); minus.textContent='−'; minus.style.fontSize='13px'; minus.style.padding='2px 8px';
+      const input = document.createElement('input'); input.type='number'; input.value=0; input.min=0; input.style.width='48px'; input.style.fontSize='12px'; input.style.textAlign='center';
+      const plus = document.createElement('button'); plus.textContent='+'; plus.style.fontSize='13px'; plus.style.padding='2px 8px';
+      minus.onclick=()=>{ input.value=Math.max(0, parseInt(input.value||0)-1); App.updateItemTotal(); };
+      plus.onclick=()=>{ input.value=parseInt(input.value||0)+1; App.updateItemTotal(); };
+      input.oninput=App.updateItemTotal;
+      qty.append(minus, input, plus);
+      row.append(label, qty);
+      panel.appendChild(row);
+    });
+    $('#usbToggle').onchange=App.updateItemTotal;
+  },
+
+  updateItemTotal(){
+    const sizes = ['15x21','20x30','30x40','30x60'];
+    let total = 0;
+    const inputs = Array.from($('#sizesPanel').querySelectorAll('input'));
+    sizes.forEach((s,i)=>{
+      const price = State.prices[s]||0;
+      const qty = parseInt(inputs[i].value||0);
+      total += price*qty;
+    });
+    if($('#usbToggle').checked) total += (State.prices.usb||0);
+    $('#itemTotal').textContent = `${total} DT`;
+    return total;
+  },
+
+  addToBasket(){
+    const sizes = ['15x21','20x30','30x40','30x60'];
+    const quantities = {};
+    let any=false;
+    const inputs = Array.from($('#sizesPanel').querySelectorAll('input'));
+    sizes.forEach((s,i)=>{
+      const qty = parseInt(inputs[i].value||0);
+      if(qty>0){ quantities[s]=qty; any=true; }
+    });
+    if(!any && !$('#usbToggle').checked){ alert('Select at least one size or USB.'); return; }
+    const photo = State.photos[State.currentPhotoIndex];
+    const total = App.updateItemTotal();
+    State.basket.push({photoId:photo.id, sizes:quantities, usb:$('#usbToggle').checked, total});
+    App.renderBasket();
+    App.go('screenClientBasket');
+  },
+
+  renderBasket(){
+    const t = $('#basketTable');
+    t.innerHTML = `<tr><th>Photo</th><th>Sizes</th><th>USB</th><th>Price</th><th>Actions</th></tr>`;
+    let total=0;
+    State.basket.forEach((it,idx)=>{
+      const p = State.photos.find(x=>x.id===it.photoId);
+      const sizes = Object.entries(it.sizes).map(([k,v])=>`${k} × ${v}`).join(', ');
+      const tr = document.createElement('tr');
+      const imgURL = p ? (p.thumb || URL.createObjectURL(p.blob)) : '';
+      tr.innerHTML = `<td><img src="${imgURL}" style="width:70px;height:50px;object-fit:cover;border-radius:6px"/></td>
+        <td>${sizes||'-'}</td>
+        <td>${it.usb?'YES':'NO'}</td>
+        <td>${it.total} DT</td>
+        <td><button class="btn danger">Delete</button></td>`;
+      tr.querySelector('button').onclick=()=>{ State.basket.splice(idx,1); App.renderBasket(); };
+      t.appendChild(tr);
+      total += it.total;
+    });
+    $('#basketTotal').textContent = `${total} DT`;
+    $('#basketCount').textContent = String(State.basket.length);
+  },
+
+  submitOrder(){
+    const room = $('#roomInput').value.trim();
+    if(!room){ alert('Enter room number'); return; }
+    const order = { room, items:State.basket, total: $('#basketTotal').textContent, createdAt: new Date().toISOString() };
+    DB.put('orders', order).then(()=>{
+      State.basket=[]; App.renderBasket();
+      alert('Order sent to admin.');
+      App.go('screenClientGallery');
+      Admin.refreshOrders();
+    });
+  },
+
+  adminLogin(){
+    const u = $('#adminUser').value.trim();
+    const p = $('#adminPass').value.trim();
+    if(u && p && p===State.adminPass){ App.go('screenAdminDash'); Admin.refreshOrders(); Admin.showTab('tabDownload'); }
+    else alert('Invalid credentials');
+  },
+
+  logout(){ App.go('screenRole'); }
+};
+
+/* ---------- Admin logic ---------- */
+const Admin = {
+  showTab(id){
+    ['tabDownload','tabOrders','tabExport','tabSettings'].forEach(t=>{ $('#'+t).style.display = (t===id?'block':'none'); });
+    if(id === 'tabDownload') Admin.renderPhotoList();
+  },
+
+  async importPhotos(){
+    const files = $('#photoInput').files;
+    const d = $('#photoDate').value || new Date().toISOString().slice(0,10);
+    const cat = $('#photoCat').value || CATEGORIES[0];
+    if(!files.length){ alert('Select image files'); return; }
+    $('#importStatus').textContent = 'Importing...';
+    for(const f of files){
+      const blob = f.slice(0, f.size, f.type);
+      const thumb = await Admin.makeThumb(blob);
+      await DB.put('photos',{ filename:f.name, date:d, category:cat, blob, thumb });
+    }
+    $('#importStatus').textContent = `Imported ${files.length} photo(s) to ${cat} / ${d}`;
+    await App.reloadPhotos();
+    App.startSlideshow();
+    Admin.renderPhotoList();
+  },
+
+  makeThumb(blob){
+    return new Promise((resolve)=>{
+      const img = new Image(); const url = URL.createObjectURL(blob);
+      img.onload = ()=>{
+        const c = document.createElement('canvas'); const maxW=300, maxH=200;
+        let w=img.width, h=img.height;
+        const ratio = Math.min(maxW/w, maxH/h);
+        w = Math.round(w*ratio); h = Math.round(h*ratio);
+        c.width=w; c.height=h;
+        const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+        const data=c.toDataURL('image/jpeg',0.7);
+        URL.revokeObjectURL(url);
+        resolve(data);
+      };
+      img.src = url;
+    });
+  },
+
+  async refreshOrders(){
+    const orders = await DB.getAll('orders');
+    State.orders = orders;
+    const box = $('#ordersList'); box.innerHTML='';
+    orders.slice().reverse().forEach((o)=>{
+      const wrap = document.createElement('div'); wrap.className='card'; wrap.style.marginBottom='8px';
+      wrap.innerHTML = `<div><strong>Room:</strong> ${o.room} • <strong>Date:</strong> ${new Date(o.createdAt).toLocaleString()}</div>`;
+      const tbl = document.createElement('table'); tbl.className='table';
+      tbl.innerHTML = `<tr><th>Photo</th><th>Sizes</th><th>USB</th><th>Price</th></tr>`;
+      o.items.forEach(it=>{
+        const p = State.photos.find(x=>x.id===it.photoId);
+        const imgURL = p ? (p.thumb || URL.createObjectURL(p.blob)) : '';
+        const sizes = Object.entries(it.sizes).map(([k,v])=>`${k} × ${v}`).join(', ');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><img src="${imgURL}" style="width:60px;height:44px;object-fit:cover;border-radius:6px"/></td>
+                        <td>${sizes||'-'}</td><td>${it.usb?'YES':'NO'}</td><td>${it.total} DT</td>`;
+        tbl.appendChild(tr);
+      });
+      wrap.appendChild(tbl);
+      box.appendChild(wrap);
+    });
+  },
+
+  exportCSV(){
+    const rows = [["id","room","createdAt","itemIndex","photoId","sizes","usb","itemTotal","orderTotal"]];
+    State.orders.forEach(o=>{
+      o.items.forEach((it,i)=>{
+        rows.push([o.id||"", o.room, o.createdAt, i, it.photoId, JSON.stringify(it.sizes), it.usb, it.total, o.total]);
+      });
+    });
+    const csv = rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='orders.csv'; a.click();
+    $('#exportStatus').textContent = 'CSV downloaded. Choose your Desktop folder to save it.';
+  },
+
+  async loadSettings(){
+    const rec = await DB.get('settings','core');
+    if(rec){
+      State.prices = rec.prices || State.prices;
+      State.adminPass = rec.pass || State.adminPass;
+    }
+    const p15=$('#p_15x21');
+    if(p15){
+      $('#p_15x21').value = State.prices['15x21'];
+      $('#p_20x30').value = State.prices['20x30'];
+      $('#p_30x40').value = State.prices['30x40'];
+      $('#p_30x60').value = State.prices['30x60'];
+      $('#p_usb').value = State.prices.usb;
+      $('#admin_password').value = State.adminPass;
+    }
+  },
+
+  async saveSettings(){
+    State.prices = {
+      '15x21': parseInt($('#p_15x21').value||0),
+      '20x30': parseInt($('#p_20x30').value||0),
+      '30x40': parseInt($('#p_30x40').value||0),
+      '30x60': parseInt($('#p_30x60').value||0),
+      usb: parseInt($('#p_usb').value||0)
+    };
+    State.adminPass = $('#admin_password').value || 'aziz2025';
+    await DB.put('settings',{key:'core', prices:State.prices, pass:State.adminPass});
+    App.renderSizesPanel();
+    alert('Settings saved');
+  },
+
+  // Render photo list with delete buttons
+  renderPhotoList(){
+    const box = $('#adminPhotoList');
+    if(!box) return;
+    box.innerHTML = '';
+    if(!State.photos.length){
+      box.innerHTML = '<div class="small">No photos uploaded yet.</div>';
+      return;
+    }
+    State.photos.slice().reverse().forEach(p=>{
+      const div = document.createElement('div');
+      div.style.display = 'flex';
+      div.style.alignItems = 'center';
+      div.style.marginBottom = '8px';
+      div.innerHTML = `
+        <img src="${p.thumb || URL.createObjectURL(p.blob)}" style="width:60px;height:44px;object-fit:cover;border-radius:6px;margin-right:8px"/>
+        <span style="flex:1">${p.filename || ('photo_'+p.id)} (${p.category}, ${p.date})</span>
+        <button class="btn danger" style="margin-left:8px">Delete</button>
+      `;
+      div.querySelector('button').onclick = ()=>Admin.deletePhoto(p.id);
+      box.appendChild(div);
+    });
+  },
+
+  async deletePhoto(id){
+    if(!confirm('Delete this photo?')) return;
+    await DB.del('photos', id);
+    await App.reloadPhotos();
+    Admin.renderPhotoList();
+    App.startSlideshow();
+    Admin.refreshOrders();
+  },
+};
+
+/* ---------- Virtual keyboard for room entry ---------- */
+(function buildKeyboard(){
+  const vk = $('#vkbd'); if(!vk) return;
+  const keys = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
+  keys.forEach(k=>{
+    const b = document.createElement('button'); b.textContent=k;
+    b.onclick=()=>{ $('#roomInput').value += k; };
+    vk.appendChild(b);
+  });
+  const back = document.createElement('button'); back.textContent='⌫'; back.onclick=()=>{
+    const v=$('#roomInput').value; $('#roomInput').value = v.slice(0,-1);
+  };
+  vk.appendChild(back);
+})();
+
+window.addEventListener('load', ()=>App.init());
+
+
+// Add zoom functionality for photoLarge
+window.addEventListener('DOMContentLoaded', ()=>{
+  const photoLarge = document.getElementById('photoLarge');
+  const zoomModal = document.getElementById('zoomModal');
+  const zoomImg = document.getElementById('zoomImg');
+  if(photoLarge && zoomModal && zoomImg){
+    photoLarge.onclick = function(){
+      zoomImg.src = photoLarge.src;
+      zoomModal.style.display = 'flex';
+    };
+    zoomModal.onclick = function(){
+      zoomModal.style.display = 'none';
+      zoomImg.src = '';
+    };
+    document.addEventListener('keydown', function(e){
+      if(zoomModal.style.display === 'flex' && (e.key === 'Escape' || e.key === 'Esc')){
+        zoomModal.style.display = 'none';
+        zoomImg.src = '';
+      }
+    });
+  }
+});
+</script>
+<!-- ...existing code... -->
